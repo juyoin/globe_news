@@ -266,9 +266,9 @@ function initGlobe() {
     Cesium.Ion.defaultAccessToken = CESIUM_TOKEN;
   }
 
-  /* 2 ── Create viewer with Cesium's own safe defaults.
-          Do NOT pass imageryProvider or terrainProvider here
-          so Cesium can handle its own internal async setup. */
+  /* 2 ── Create viewer with explicit globe-safe defaults.
+          We intentionally start with EllipsoidTerrainProvider + OSM imagery
+          so the Earth is always visible even if Ion is unavailable. */
   try {
     viewer = new Cesium.Viewer("cesiumContainer", {
       baseLayerPicker:      false,
@@ -282,7 +282,14 @@ function initGlobe() {
       timeline:             false,
       navigationHelpButton: false,
       creditContainer:      document.createElement("div"),
+      terrainProvider:      new Cesium.EllipsoidTerrainProvider(),
     });
+
+    // Reliable base imagery fallback (works without Ion token).
+    viewer.imageryLayers.removeAll();
+    viewer.imageryLayers.addImageryProvider(new Cesium.OpenStreetMapImageryProvider({
+      url: "https://tile.openstreetmap.org/"
+    }));
   } catch(err) {
     console.error("Cesium Viewer failed to create:", err);
     dismissLoading();
@@ -314,23 +321,25 @@ function initGlobe() {
   }
 
   /* 4 ── Visual tweaks (all guarded) */
+  try { viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString("#102038"); } catch(e) {}
   try { viewer.scene.globe.enableLighting = true; } catch(e) {}
   try { viewer.scene.globe.showGroundAtmosphere = true; } catch(e) {}
   try { viewer.scene.skyAtmosphere.show = true; } catch(e) {}
   try { viewer.scene.fog.enabled = true; viewer.scene.fog.density = 0.00025; } catch(e) {}
   try { viewer.scene.postProcessStages.fxaa.enabled = true; } catch(e) {}
 
-  /* 5 ── Camera start position */
+  /* 5 ── Camera start position
+         Use a top-down angle first so users always see the globe. */
   viewer.camera.setView({
-    destination: Cesium.Cartesian3.fromDegrees(12, 28, 18000000),
-    orientation: { heading: 0, pitch: Cesium.Math.toRadians(-40), roll: 0 }
+    destination: Cesium.Cartesian3.fromDegrees(12, 28, 22000000),
+    orientation: { heading: 0, pitch: Cesium.Math.toRadians(-88), roll: 0 }
   });
 
-  // Fly in nicely
+  // Fly in nicely while keeping Earth centered.
   setTimeout(function() {
     viewer.camera.flyTo({
-      destination: Cesium.Cartesian3.fromDegrees(12, 28, 13000000),
-      orientation: { heading: 0, pitch: Cesium.Math.toRadians(-35), roll: 0 },
+      destination: Cesium.Cartesian3.fromDegrees(12, 28, 15000000),
+      orientation: { heading: 0, pitch: Cesium.Math.toRadians(-75), roll: 0 },
       duration: 3.0
     });
   }, 300);
@@ -427,7 +436,7 @@ function renderPins() {
     : allArticles.filter(function(a){ return a.category === activeCategory; });
 
   list.forEach(function(article) {
-    if (!article.lat || !article.lon) return;
+    if (article.lat == null || article.lon == null) return;
     var scale  = (article.related_count || 0) > 2 ? 1.4 : (article.related_count || 0) > 0 ? 1.2 : 1.0;
     var pinImg = makePinSVG(article.color || "#3b9eff");
 
@@ -516,7 +525,7 @@ function openSidebar(article) {
   document.getElementById("sidebar-read-btn").href = article.url || "#";
   document.getElementById("sidebar").classList.add("open");
 
-  if (article.lat && article.lon && viewer) {
+  if (article.lat != null && article.lon != null && viewer) {
     viewer.camera.flyTo({
       destination: Cesium.Cartesian3.fromDegrees(article.lon, article.lat, 4000000),
       orientation: { heading: 0, pitch: Cesium.Math.toRadians(-45), roll: 0 },

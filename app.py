@@ -87,7 +87,7 @@ def get_news():
 
     # Sort by priority (has coords first, then by recency)
     articles.sort(key=lambda a: (
-        0 if (a.get("lat") and a.get("lon")) else 1,
+        0 if (a.get("lat") is not None and a.get("lon") is not None) else 1,
         -a.get("published_ts", 0),
     ))
 
