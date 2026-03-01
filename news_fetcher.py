@@ -129,13 +129,17 @@ class NewsFetcher:
         if self.gnews_key:
             raw.extend(self._fetch_gnews())
 
+        if not raw:
+            log.warning("All external sources unavailable — using demo/sample data")
+            raw.extend(self._demo_articles())
+
         log.info(f"  Raw articles fetched: {len(raw)}")
 
         # Geocode each article (adds lat/lon)
         geocoded = self._geocode_articles(raw)
 
         # Keep only articles that could be placed on the globe
-        placed = [a for a in geocoded if a.get("lat") and a.get("lon")]
+        placed = [a for a in geocoded if a.get("lat") is not None and a.get("lon") is not None]
         log.info(f"  Articles with coordinates: {len(placed)}")
 
         # Cluster/deduplicate nearby pins about the same story
