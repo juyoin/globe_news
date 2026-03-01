@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GlobeNews — Live World Events</title>
+
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.117/Build/Cesium/Cesium.js"></script>
+  <link  href="https://cesium.com/downloads/cesiumjs/releases/1.117/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg:       #050810;
+      --surface:  rgba(10,14,28,0.92);
+      --surface2: rgba(16,22,42,0.95);
+      --border:   rgba(99,179,255,0.14);
+      --accent:   #3b9eff;
+      --accent2:  #7b61ff;
+      --text:     #e8edf5;
+      --text-dim: #8898b0;
+      --success:  #38e8a0;
+      --radius:   12px;
+      --font-head:'Syne', sans-serif;
+      --font-body:'Inter', sans-serif;
+      --sidebar-w:360px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; width: 100%; background: var(--bg); color: var(--text); font-family: var(--font-body); overflow: hidden; }
+
+    #cesiumContainer { position: fixed; inset: 0; width: 100%; height: 100%; }
+
+    /* hide Cesium default chrome */
+    .cesium-viewer-bottom,
+    .cesium-viewer-toolbar,
+    .cesium-viewer-animationContainer,
+    .cesium-viewer-timelineContainer,
+    .cesium-viewer-fullscreenContainer { display: none !important; }
+
+    /* Top bar */
+    #topbar {
+      position: fixed; top: 0; left: 0; right: 0; height: 60px;
+      background: linear-gradient(to bottom, rgba(5,8,16,0.95), rgba(5,8,16,0));
+      display: flex; align-items: center; padding: 0 24px; gap: 20px;
+      z-index: 100; pointer-events: none;
+    }
+    #logo { pointer-events: all; display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    #logo .globe-icon {
+      width: 32px; height: 32px;
+      background: conic-gradient(from 180deg, var(--accent) 0%, var(--accent2) 60%, var(--accent) 100%);
+      border-radius: 50%; animation: spin 12s linear infinite;
+      box-shadow: 0 0 18px rgba(59,158,255,0.5);
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #logo span { font-family: var(--font-head); font-size: 1.35rem; font-weight: 800; letter-spacing: -0.03em; color: #fff; }
+    #logo span em { font-style: normal; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    #topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; pointer-events: all; }
+    #live-badge {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(56,232,160,0.1); border: 1px solid rgba(56,232,160,0.3);
+      border-radius: 100px; padding: 4px 12px 4px 8px;
+      font-size: 0.7rem; font-weight: 500; color: var(--success); letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    .live-dot { width: 7px; height: 7px; background: var(--success); border-radius: 50%; animation: pulse 1.8s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
+    #news-count { font-size: 0.78rem; color: var(--text-dim); }
+
+    /* Filter chips */
+    #filter-bar {
+      position: fixed; top: 70px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 8px; z-index: 100; flex-wrap: wrap; justify-content: center; pointer-events: all;
+    }
+    .chip {
+      background: rgba(10,14,28,0.75); border: 1px solid var(--border); border-radius: 100px;
+      padding: 5px 14px; font-size: 0.72rem; font-weight: 500; color: var(--text-dim);
+      cursor: pointer; backdrop-filter: blur(12px); transition: all 0.2s;
+      letter-spacing: 0.04em; text-transform: uppercase; display: flex; align-items: center; gap: 6px;
+    }
+    .chip:hover { color: var(--text); border-color: rgba(99,179,255,0.35); }
+    .chip.active { color: #fff; background: rgba(59,158,255,0.18); border-color: var(--accent); box-shadow: 0 0 20px rgba(59,158,255,0.35); }
+    .chip-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+    /* Sidebar */
+    #sidebar {
+      position: fixed; top: 0; right: 0; width: var(--sidebar-w); height: 100%;
+      background: var(--surface); backdrop-filter: blur(24px); border-left: 1px solid var(--border);
+      z-index: 200; display: flex; flex-direction: column;
+      transform: translateX(calc(var(--sidebar-w) + 20px));
+      transition: transform 0.4s cubic-bezier(0.16,1,0.3,1);
+    }
+    #sidebar.open { transform: translateX(0); box-shadow: -20px 0 60px rgba(0,0,0,0.6); }
+    #sidebar-header { padding: 24px 20px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; gap: 12px; }
+    #sidebar-close {
+      margin-left: auto; background: none; border: 1px solid var(--border); border-radius: 8px;
+      width: 32px; height: 32px; cursor: pointer; color: var(--text-dim); font-size: 1rem;
+      display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0;
+    }
+    #sidebar-close:hover { color: var(--text); border-color: var(--accent); }
+    #sidebar-meta { flex: 1; }
+    #sidebar-source { font-size: 0.7rem; color: var(--accent); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+    #sidebar-title { font-family: var(--font-head); font-size: 1.1rem; font-weight: 700; line-height: 1.35; color: #fff; }
+    #sidebar-body { flex: 1; overflow-y: auto; padding: 20px; }
+    #sidebar-body::-webkit-scrollbar { width: 4px; }
+    #sidebar-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    #sidebar-image { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: var(--radius); margin-bottom: 16px; display: none; }
+    #sidebar-image.visible { display: block; }
+    #sidebar-summary { font-size: 0.9rem; line-height: 1.7; color: var(--text-dim); margin-bottom: 20px; }
+    #sidebar-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    .tag { font-size: 0.68rem; font-weight: 500; border-radius: 6px; padding: 3px 9px; letter-spacing: 0.06em; text-transform: uppercase; }
+    #sidebar-read-btn {
+      display: block; width: 100%; padding: 14px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff; font-family: var(--font-head); font-size: 0.9rem; font-weight: 700;
+      border: none; border-radius: var(--radius); cursor: pointer; text-align: center;
+      letter-spacing: 0.03em; transition: opacity 0.2s, transform 0.15s; text-decoration: none;
+    }
+    #sidebar-read-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+
+    /* Tooltip */
+    #tooltip {
+      position: fixed; max-width: 300px; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px;
+      pointer-events: none; opacity: 0; transform: translateY(6px);
+      transition: opacity 0.15s, transform 0.15s; z-index: 500;
+      backdrop-filter: blur(20px); box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    #tooltip.visible { opacity: 1; transform: translateY(0); }
+    #tooltip-source { font-size: 0.65rem; font-weight: 600; color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 5px; }
+    #tooltip-title { font-family: var(--font-head); font-size: 0.85rem; font-weight: 700; color: #fff; line-height: 1.4; margin-bottom: 6px; }
+    #tooltip-summary { font-size: 0.75rem; color: var(--text-dim); line-height: 1.5; }
+    #tooltip-hint { margin-top: 8px; font-size: 0.68rem; color: var(--accent); opacity: 0.7; }
+
+    /* Status bar */
+    #statusbar {
+      position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+      background: var(--surface); border: 1px solid var(--border); border-radius: 100px;
+      padding: 6px 18px; font-size: 0.72rem; color: var(--text-dim); z-index: 100;
+      backdrop-filter: blur(20px); display: flex; align-items: center; gap: 10px; pointer-events: none;
+    }
+    #statusbar .sep { opacity: 0.3; }
+
+    /* Loading */
+    #loading {
+      position: fixed; inset: 0; background: var(--bg);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 9999; gap: 20px; transition: opacity 0.6s;
+    }
+    #loading.fade { opacity: 0; pointer-events: none; }
+    .loader-globe {
+      width: 72px; height: 72px;
+      border: 3px solid rgba(59,158,255,0.15);
+      border-top-color: var(--accent); border-right-color: var(--accent2);
+      border-radius: 50%; animation: spin 0.9s linear infinite;
+    }
+    #loading h2 { font-family: var(--font-head); font-size: 1.5rem; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
+    #loading p { font-size: 0.83rem; color: var(--text-dim); text-align: center; max-width: 300px; line-height: 1.6; }
+
+    /* Refresh ring */
+    #refresh-ring { position: fixed; bottom: 16px; right: 20px; width: 44px; height: 44px; cursor: pointer; z-index: 100; }
+    #refresh-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    #refresh-ring circle.bg { fill: none; stroke: rgba(255,255,255,0.07); stroke-width: 3; }
+    #refresh-ring circle.fg { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 113; stroke-dashoffset: 0; transition: stroke-dashoffset 1s linear; }
+    #refresh-ring .icon { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; color: var(--text-dim); }
+  </style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="loader-globe"></div>
+  <h2>GlobeNews</h2>
+  <p>Loading 3D globe and fetching live world events…</p>
+</div>
+
+<div id="cesiumContainer"></div>
+
+<div id="topbar">
+  <a id="logo" href="#">
+    <div class="globe-icon"></div>
+    <span>Globe<em>News</em></span>
+  </a>
+  <div id="topbar-right">
+    <div id="live-badge"><div class="live-dot"></div>Live</div>
+    <span id="news-count">— events</span>
+  </div>
+</div>
+
+<div id="filter-bar">
+  <div class="chip active" data-cat="all"><span class="chip-dot" style="background:#fff"></span>All</div>
+  <div class="chip" data-cat="politics"><span class="chip-dot" style="background:#E74C3C"></span>Politics</div>
+  <div class="chip" data-cat="technology"><span class="chip-dot" style="background:#9B59B6"></span>Technology</div>
+  <div class="chip" data-cat="business"><span class="chip-dot" style="background:#3498DB"></span>Business</div>
+  <div class="chip" data-cat="science"><span class="chip-dot" style="background:#27AE60"></span>Science</div>
+  <div class="chip" data-cat="health"><span class="chip-dot" style="background:#E67E22"></span>Health</div>
+  <div class="chip" data-cat="sports"><span class="chip-dot" style="background:#F39C12"></span>Sports</div>
+  <div class="chip" data-cat="entertainment"><span class="chip-dot" style="background:#1ABC9C"></span>Arts</div>
+</div>
+
+<div id="tooltip">
+  <div id="tooltip-source"></div>
+  <div id="tooltip-title"></div>
+  <div id="tooltip-summary"></div>
+  <div id="tooltip-hint">Click to open full article →</div>
+</div>
+
+<div id="sidebar">
+  <div id="sidebar-header">
+    <div id="sidebar-meta">
+      <div id="sidebar-source"></div>
+      <div id="sidebar-title"></div>
+    </div>
+    <button id="sidebar-close" onclick="closeSidebar()">✕</button>
+  </div>
+  <div id="sidebar-body">
+    <img id="sidebar-image" src="" alt="" />
+    <div id="sidebar-summary"></div>
+    <div id="sidebar-tags"></div>
+    <a id="sidebar-read-btn" href="#" target="_blank" rel="noopener">Read Full Article ↗</a>
+  </div>
+</div>
+
+<div id="statusbar">
+  <span id="status-coords">Lat — · Lon —</span>
+  <span class="sep">|</span>
+  <span id="status-updated">Loading…</span>
+</div>
+
+<div id="refresh-ring" title="Click to refresh now">
+  <svg viewBox="0 0 40 40">
+    <circle class="bg" cx="20" cy="20" r="18"/>
+    <circle class="fg" id="refresh-fg" cx="20" cy="20" r="18"/>
+  </svg>
+  <div class="icon">⟳</div>
+</div>
+
+<script>
+const CESIUM_TOKEN     = "{{ cesium_token }}";
+const REFRESH_INTERVAL = parseInt("{{ refresh_interval }}") * 1000;
+const API_URL          = "/api/news?limit=300";
+const RING_CIRC        = 2 * Math.PI * 18;
+
+let viewer         = null;
+let allArticles    = [];
+let activeCategory = "all";
+let entityMap      = new Map();
+let refreshTimer   = null;
+
+/* ── Dismiss loading screen ── */
+function dismissLoading() {
+  const el = document.getElementById("loading");
+  if (!el) return;
+  el.classList.add("fade");
+  setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 700);
+}
+
+/* ════════════════════════════════════════════════
+   CESIUM INIT
+   Uses the most compatible, version-agnostic
+   approach: let Cesium pick its own defaults,
+   then swap imagery after the fact.
+   ════════════════════════════════════════════════ */
+function initGlobe() {
+
+  /* 1 ── Token */
+  const hasToken = CESIUM_TOKEN && CESIUM_TOKEN.length > 20;
+  if (hasToken) {
+    Cesium.Ion.defaultAccessToken = CESIUM_TOKEN;
+  }
+
+  /* 2 ── Create viewer with Cesium's own safe defaults.
+          Do NOT pass imageryProvider or terrainProvider here
+          so Cesium can handle its own internal async setup. */
+  try {
+    viewer = new Cesium.Viewer("cesiumContainer", {
+      baseLayerPicker:      false,
+      animation:            false,
+      fullscreenButton:     false,
+      geocoder:             false,
+      homeButton:           false,
+      infoBox:              false,
+      sceneModePicker:      false,
+      selectionIndicator:   false,
+      timeline:             false,
+      navigationHelpButton: false,
+      creditContainer:      document.createElement("div"),
+    });
+  } catch(err) {
+    console.error("Cesium Viewer failed to create:", err);
+    dismissLoading();
+    return;
+  }
+
+  /* 3 ── Swap to Ion satellite if token is valid.
+          We do this AFTER construction using the async fromAssetId.
+          If it fails we keep whatever default Cesium picked (usually Bing/OSM). */
+  if (hasToken) {
+    Cesium.IonImageryProvider.fromAssetId(2)
+      .then(function(provider) {
+        viewer.imageryLayers.removeAll();
+        viewer.imageryLayers.addImageryProvider(provider);
+        console.log("Ion satellite imagery loaded");
+      })
+      .catch(function(e) {
+        console.warn("Ion imagery unavailable:", e);
+      });
+
+    // Terrain — also async, applied after viewer ready
+    Cesium.createWorldTerrainAsync({ requestWaterMask: true, requestVertexNormals: true })
+      .then(function(terrain) {
+        viewer.terrainProvider = terrain;
+      })
+      .catch(function(e) {
+        console.warn("Terrain unavailable:", e);
+      });
+  }
+
+  /* 4 ── Visual tweaks (all guarded) */
+  try { viewer.scene.globe.enableLighting = true; } catch(e) {}
+  try { viewer.scene.globe.showGroundAtmosphere = true; } catch(e) {}
+  try { viewer.scene.skyAtmosphere.show = true; } catch(e) {}
+  try { viewer.scene.fog.enabled = true; viewer.scene.fog.density = 0.00025; } catch(e) {}
+  try { viewer.scene.postProcessStages.fxaa.enabled = true; } catch(e) {}
+
+  /* 5 ── Camera start position */
+  viewer.camera.setView({
+    destination: Cesium.Cartesian3.fromDegrees(12, 28, 18000000),
+    orientation: { heading: 0, pitch: Cesium.Math.toRadians(-40), roll: 0 }
+  });
+
+  // Fly in nicely
+  setTimeout(function() {
+    viewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(12, 28, 13000000),
+      orientation: { heading: 0, pitch: Cesium.Math.toRadians(-35), roll: 0 },
+      duration: 3.0
+    });
+  }, 300);
+
+  /* 6 ── Mouse events */
+  var handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+
+  handler.setInputAction(function(evt) {
+    var picked  = viewer.scene.pick(evt.endPosition);
+    var article = picked && picked.id && picked.id.properties && picked.id.properties._articleData
+                  ? picked.id.properties._articleData.getValue() : null;
+    if (article) {
+      showTooltip(article, evt.endPosition);
+      viewer.scene.canvas.style.cursor = "pointer";
+    } else {
+      hideTooltip();
+      viewer.scene.canvas.style.cursor = "default";
+    }
+    var cart = viewer.camera.pickEllipsoid(evt.endPosition, viewer.scene.globe.ellipsoid);
+    if (cart) {
+      var carto = Cesium.Ellipsoid.WGS84.cartesianToCartographic(cart);
+      document.getElementById("status-coords").textContent =
+        "Lat " + Cesium.Math.toDegrees(carto.latitude).toFixed(2) +
+        "° · Lon " + Cesium.Math.toDegrees(carto.longitude).toFixed(2) + "°";
+    }
+  }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+
+  handler.setInputAction(function(evt) {
+    var picked  = viewer.scene.pick(evt.position);
+    var article = picked && picked.id && picked.id.properties && picked.id.properties._articleData
+                  ? picked.id.properties._articleData.getValue() : null;
+    if (article) openSidebar(article);
+    else         closeSidebar();
+  }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+  /* 7 ── UI wiring */
+  document.querySelectorAll(".chip").forEach(function(chip) {
+    chip.addEventListener("click", function() {
+      document.querySelectorAll(".chip").forEach(function(c) { c.classList.remove("active"); });
+      chip.classList.add("active");
+      activeCategory = chip.dataset.cat;
+      renderPins();
+    });
+  });
+
+  document.getElementById("refresh-ring").addEventListener("click", function() {
+    fetchNews(true);
+  });
+
+  /* 8 ── Fetch news, dismiss loading, start loop */
+  fetchNews(false).then(function() {
+    dismissLoading();
+    startRefreshLoop();
+  });
+}
+
+/* ════════════════════════════════════════════════
+   NEWS
+   ════════════════════════════════════════════════ */
+async function fetchNews(forceRefresh) {
+  if (forceRefresh) {
+    await fetch("/api/refresh", { method: "POST" }).catch(function(){});
+    await new Promise(function(r){ setTimeout(r, 1500); });
+  }
+  try {
+    var resp = await fetch(API_URL);
+    var data = await resp.json();
+    allArticles = data.articles || [];
+    document.getElementById("news-count").textContent = allArticles.length + " events";
+    if (data.last_updated) {
+      var d = new Date(data.last_updated * 1000);
+      document.getElementById("status-updated").textContent =
+        "Updated " + d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+    }
+    renderPins();
+  } catch(e) {
+    console.error("fetchNews failed:", e);
+  }
+}
+
+/* ════════════════════════════════════════════════
+   PINS
+   ════════════════════════════════════════════════ */
+function renderPins() {
+  if (!viewer) return;
+  entityMap.forEach(function(_, id) {
+    var e = viewer.entities.getById(id);
+    if (e) viewer.entities.remove(e);
+  });
+  entityMap.clear();
+
+  var list = activeCategory === "all"
+    ? allArticles
+    : allArticles.filter(function(a){ return a.category === activeCategory; });
+
+  list.forEach(function(article) {
+    if (!article.lat || !article.lon) return;
+    var scale  = (article.related_count || 0) > 2 ? 1.4 : (article.related_count || 0) > 0 ? 1.2 : 1.0;
+    var pinImg = makePinSVG(article.color || "#3b9eff");
+
+    var entity = viewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(article.lon, article.lat, 0),
+      billboard: {
+        image:                    pinImg,
+        width:                    32 * scale,
+        height:                   44 * scale,
+        verticalOrigin:           Cesium.VerticalOrigin.BOTTOM,
+        heightReference:          Cesium.HeightReference.CLAMP_TO_GROUND,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        scaleByDistance:          new Cesium.NearFarScalar(1e5, 1.3, 2e7, 0.4),
+        translucencyByDistance:   new Cesium.NearFarScalar(1e5, 1.0, 3e7, 0.0),
+      },
+      properties: { _articleData: new Cesium.ConstantProperty(article) }
+    });
+    entityMap.set(entity.id, article);
+  });
+}
+
+function makePinSVG(color) {
+  var c   = color || "#3b9eff";
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="44" viewBox="0 0 32 44">'
+    + '<defs>'
+    + '<radialGradient id="g" cx="40%" cy="35%">'
+    + '<stop offset="0%" stop-color="' + lighten(c, 0.4) + '"/>'
+    + '<stop offset="100%" stop-color="' + c + '"/>'
+    + '</radialGradient>'
+    + '<filter id="sh"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.5"/></filter>'
+    + '</defs>'
+    + '<path d="M16 2C9.37 2 4 7.37 4 14c0 9.63 12 26 12 26s12-16.37 12-26C28 7.37 22.63 2 16 2z" fill="url(#g)" filter="url(#sh)"/>'
+    + '<circle cx="16" cy="14" r="5" fill="rgba(255,255,255,0.85)"/>'
+    + '</svg>';
+  return "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
+}
+
+function lighten(hex, amt) {
+  var n = parseInt(hex.replace("#",""), 16);
+  var r = Math.min(255, (n >> 16) + Math.round(255 * amt));
+  var g = Math.min(255, ((n >> 8) & 0xff) + Math.round(255 * amt));
+  var b = Math.min(255, (n & 0xff) + Math.round(255 * amt));
+  return "#" + ((r<<16)|(g<<8)|b).toString(16).padStart(6,"0");
+}
+
+/* ════════════════════════════════════════════════
+   TOOLTIP
+   ════════════════════════════════════════════════ */
+function showTooltip(article, pos) {
+  document.getElementById("tooltip-source").textContent  = article.source || "News";
+  document.getElementById("tooltip-title").textContent   = article.title;
+  document.getElementById("tooltip-summary").textContent = (article.summary || "").substring(0,120) + "…";
+  var x = Math.min(pos.x + 16, window.innerWidth  - 320);
+  var y = Math.max(pos.y - 80, 10);
+  var el = document.getElementById("tooltip");
+  el.style.left = x + "px";
+  el.style.top  = y + "px";
+  el.classList.add("visible");
+}
+function hideTooltip() { document.getElementById("tooltip").classList.remove("visible"); }
+
+/* ════════════════════════════════════════════════
+   SIDEBAR
+   ════════════════════════════════════════════════ */
+function openSidebar(article) {
+  var d = article.published_ts ? new Date(article.published_ts * 1000) : null;
+  var ts = d ? d.toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}) : "";
+  document.getElementById("sidebar-source").textContent  = (article.source || "News") + "  ·  " + ts;
+  document.getElementById("sidebar-title").textContent   = article.title;
+  document.getElementById("sidebar-summary").textContent = article.summary || article.title;
+
+  var img = document.getElementById("sidebar-image");
+  if (article.image) { img.src = article.image; img.classList.add("visible"); }
+  else               { img.classList.remove("visible"); img.src = ""; }
+
+  var tags = document.getElementById("sidebar-tags");
+  tags.innerHTML = "";
+  if (article.category) {
+    var t = document.createElement("span");
+    t.className = "tag";
+    t.textContent = article.category;
+    t.style.cssText = "background:" + (article.color||"#3b9eff") + "22;color:" + (article.color||"#3b9eff") + ";border:1px solid " + (article.color||"#3b9eff") + "44";
+    tags.appendChild(t);
+  }
+
+  document.getElementById("sidebar-read-btn").href = article.url || "#";
+  document.getElementById("sidebar").classList.add("open");
+
+  if (article.lat && article.lon && viewer) {
+    viewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(article.lon, article.lat, 4000000),
+      orientation: { heading: 0, pitch: Cesium.Math.toRadians(-45), roll: 0 },
+      duration: 1.8
+    });
+  }
+}
+function closeSidebar() { document.getElementById("sidebar").classList.remove("open"); }
+
+/* ════════════════════════════════════════════════
+   AUTO-REFRESH RING
+   ════════════════════════════════════════════════ */
+function startRefreshLoop() {
+  var ringFg   = document.getElementById("refresh-fg");
+  var elapsed  = 0;
+  clearInterval(refreshTimer);
+  refreshTimer = setInterval(function() {
+    elapsed += 1000;
+    ringFg.style.strokeDashoffset = (RING_CIRC * (1 - elapsed / REFRESH_INTERVAL)).toFixed(1);
+    if (elapsed >= REFRESH_INTERVAL) {
+      elapsed = 0;
+      ringFg.style.strokeDashoffset = RING_CIRC;
+      fetchNews(false);
+    }
+  }, 1000);
+}
+
+/* ── Boot ── */
+window.addEventListener("load", initGlobe);
+</script>
+</body>
+</html>
