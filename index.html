@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atlas | Global Explorer</title>
+    <meta name="description" content="Explore the world with Atlas — a premium interactive map experience.">
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- Search Bar -->
+    <div id="search-container">
+        <div id="search-wrapper">
+            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input id="search-input" type="text" placeholder="Search any place…" autocomplete="off"
+                spellcheck="false" />
+            <button id="clear-btn" class="clear-btn" aria-label="Clear" tabindex="-1">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+            </button>
+        </div>
+        <!-- Custom suggestions dropdown -->
+        <ul id="suggestions-list"></ul>
+    </div>
+
+    <!-- Top-left wordmark -->
+    <div id="wordmark">
+        <span class="wordmark-logo">✦</span>
+        <span class="wordmark-text">ATLAS</span>
+    </div>
+
+    <!-- Custom Map Controls — bottom right -->
+    <div id="map-controls">
+        <button id="zoom-in" class="ctrl-btn" aria-label="Zoom in">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+        </button>
+        <div class="ctrl-divider"></div>
+        <button id="zoom-out" class="ctrl-btn" aria-label="Zoom out">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+        </button>
+        <div class="ctrl-divider"></div>
+        <button id="map-type-btn" class="ctrl-btn" aria-label="Toggle map type" title="Toggle satellite/map">
+            <svg id="icon-satellite" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
+                </path>
+            </svg>
+            <svg id="icon-map" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                <line x1="8" y1="2" x2="8" y2="18"></line>
+                <line x1="16" y1="6" x2="16" y2="22"></line>
+            </svg>
+        </button>
+        <div class="ctrl-divider"></div>
+        <button id="my-location-btn" class="ctrl-btn" aria-label="My location">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path
+                    d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83">
+                </path>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Place Info Card — slides up from bottom -->
+    <div id="info-card">
+        <button id="close-card" aria-label="Close">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
+        <div class="card-accent-line"></div>
+        <p class="card-label">DESTINATION</p>
+        <h2 id="place-name">—</h2>
+        <p id="place-address" class="place-address">—</p>
+        <div class="card-divider"></div>
+        <div class="card-meta">
+            <div class="meta-item">
+                <span class="meta-label">COORDINATES</span>
+                <span id="place-coords" class="meta-value mono">—</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Coordinate HUD — bottom left -->
+    <div id="coords-hud">
+        <span id="coords">— ° N &nbsp; — ° E</span>
+    </div>
+
+    <!-- Map Canvas — explicit height required for Google Maps to render -->
+    <div class="map-container">
+        <div id="map"></div>
+    </div>
+
+    <!-- Loading overlay — hidden once map initialises -->
+    <div id="map-loading">
+        <div id="map-loading-inner">
+            <span class="wordmark-logo" style="font-size:28px;color:var(--gold)">✦</span>
+            <span
+                style="font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;letter-spacing:0.28em;color:var(--text);opacity:0.7;margin-top:12px">ATLAS</span>
+        </div>
+    </div>
+
+    <!-- Error overlay — shown if map fails to load -->
+    <div id="map-error" style="display:none">
+        <div id="map-error-inner">
+            <span style="font-size:32px;color:var(--gold);margin-bottom:16px">✦</span>
+            <p
+                style="font-family:'Outfit',sans-serif;font-weight:600;font-size:15px;color:var(--text);margin-bottom:8px">
+                Map failed to load</p>
+            <p id="map-error-msg"
+                style="font-family:'Outfit',sans-serif;font-size:13px;color:var(--muted-mid);text-align:center;max-width:280px">
+            </p>
+            <button onclick="location.reload()"
+                style="margin-top:24px;padding:10px 24px;border-radius:50px;border:1px solid var(--glass-border);background:transparent;color:var(--text);font-family:'Outfit',sans-serif;font-size:13px;cursor:pointer;letter-spacing:0.05em">Retry</button>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+
+    <!-- Google Maps Bootstrap Loader -->
+    <!-- ⚠️  SECURITY: Restrict this API key in Google Cloud Console.
+         Set HTTP referrer restrictions to your domain(s) to prevent
+         unauthorized usage. Never ship an unrestricted key to production. -->
+    <script>
+        (g => {
+            var h, a, k, p = "The Google Maps JavaScript API", c = "google", l = "importLibrary", q = "__ib__", m = document, b = window;
+            b = b[c] || (b[c] = {});
+            var d = b.maps || (b.maps = {}), r = new Set, e = new URLSearchParams, u = () => h || (h = new Promise(async (f, n) => {
+                await (a = m.createElement("script"));
+                e.set("libraries", [...r] + "");
+                for (k in g) e.set(k.replace(/[A-Z]/g, t => "_" + t[0].toLowerCase()), g[k]);
+                e.set("callback", c + ".maps." + q);
+                a.src = `https://maps.${c}apis.com/maps/api/js?` + e;
+                d[q] = f;
+                a.onerror = () => h = n(Error(p + " could not load."));
+                a.nonce = m.querySelector("script[nonce]")?.nonce || "";
+                m.head.append(a);
+            }));
+            d[l] ? console.warn(p + " only loads once. Ignoring:", g) : d[l] = (f, ...n) => r.add(f) && u().then(() => d[l](f, ...n));
+        })({ key: "AIzaSyAL5_EVPvDYtK8U4Q9D-8x_ll2d6qCFDD8", v: "weekly" });
+    </script>
+
+</body>
+
+</html>
