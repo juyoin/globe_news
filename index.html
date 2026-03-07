@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -38,6 +38,128 @@
     <div id="wordmark">
         <span class="wordmark-logo">✦</span>
         <span class="wordmark-text">ATLAS</span>
+    </div>
+    <!-- Live News Intelligence trigger button — bottom left, above coords hud -->
+    <button id="news-btn" aria-label="Live News Intelligence" title="Live News Intelligence">
+        <span class="news-btn-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="2" />
+                <path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49" />
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14" />
+            </svg>
+        </span>
+        <span class="news-btn-label">INTELLIGENCE</span>
+        <span class="news-live-dot" aria-hidden="true"></span>
+    </button>
+
+    <!-- ═══ NEWS PANEL — slides in from left ═══ -->
+    <div id="news-panel" role="complementary" aria-label="Live News Intelligence">
+        <div id="news-panel-header">
+            <div class="np-header-left">
+                <span class="np-logo">✦</span>
+                <div class="np-header-titles">
+                    <span class="np-title">LIVE INTELLIGENCE</span>
+                    <span class="np-subtitle" id="intelligence-focus">Top headlines from major global outlets.</span>
+                </div>
+            </div>
+            <div class="np-header-right">
+                <span class="np-live-badge">
+                    <span class="np-live-dot"></span>
+                    LIVE
+                </span>
+                <button id="close-news-panel" aria-label="Close news panel">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="np-level-select-wrap">
+            <label for="intelligence-level" class="np-level-label">INTELLIGENCE LEVEL</label>
+            <select id="intelligence-level" class="np-level-select" aria-label="Intelligence Level">
+                <option value="standard">Standard (Global Pulse)</option>
+                <option value="conflict_watch">Conflict Watch</option>
+                <option value="green_horizon">Green Horizon</option>
+                <option value="economic_engine">Economic Engine</option>
+                <option value="cyber_frontier">Cyber Frontier</option>
+            </select>
+        </div>
+
+        <div id="news-panel-status">
+            <div class="np-spinner">
+                <span class="np-spin-ring"></span>
+                <span class="np-spin-logo">✦</span>
+            </div>
+            <p id="news-status-text" class="np-status-text">Initialising…</p>
+            <p class="np-status-sub">AI is reading and geolocating news</p>
+        </div>
+
+        <div id="news-panel-error" style="display:none">
+            <div class="np-error-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+            </div>
+            <p id="news-error-msg" class="np-error-msg">An error occurred.</p>
+            <button id="news-retry-btn" class="np-retry-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+                    <polyline points="1 4 1 10 7 10" />
+                    <path d="M3.51 15a9 9 0 1 0 .49-3.67" />
+                </svg>
+                Retry
+            </button>
+        </div>
+
+        <div id="news-panel-list" style="display:none"></div>
+    </div>
+
+    <!-- ═══ NEWS DETAIL CARD — slides up from bottom ═══ -->
+    <div id="news-detail-card" role="dialog" aria-label="News detail">
+        <button id="close-ndc" aria-label="Close">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+        </button>
+
+        <div class="ndc-top-row">
+            <span id="ndc-num" class="ndc-num">—</span>
+            <span class="ndc-badge">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="10" height="10">
+                    <circle cx="12" cy="12" r="2" />
+                    <path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49" />
+                </svg>
+                INTELLIGENCE
+            </span>
+        </div>
+
+        <div class="card-accent-line"></div>
+
+        <p class="card-label">BREAKING</p>
+        <h2 id="ndc-title" class="ndc-title">—</h2>
+        <p id="ndc-location" class="ndc-location">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="12" height="12">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
+            </svg>
+            <span>—</span>
+        </p>
+
+        <div class="card-divider"></div>
+
+        <p class="ndc-summary-label">SUMMARY</p>
+        <p id="ndc-summary" class="ndc-summary">—</p>
+
+        <div class="card-meta" style="margin-top:16px">
+            <div class="meta-item">
+                <span class="meta-label">COORDINATES</span>
+                <span id="ndc-coords" class="meta-value mono">—</span>
+            </div>
+        </div>
     </div>
 
     <!-- Custom Map Controls — bottom right -->
@@ -168,3 +290,4 @@
 </body>
 
 </html>
+
